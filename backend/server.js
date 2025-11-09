@@ -61,5 +61,5 @@ app.get('/', (req, res) => {
 
 
 
-app.listen(port, '0.0.0.0',() => console.log(`✅ Node.js server listening on http://192.168.178.82:${port}🚀`));
+app.listen(port, '0.0.0.0', () => console.log(`✅ Node.js server listening on ${port}🚀`));
 

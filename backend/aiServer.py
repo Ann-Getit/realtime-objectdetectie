@@ -7,17 +7,33 @@ import io
 import base64
 import numpy as np
 import torch
+import os
 
 app = Flask(__name__)
+
+MODEL_PATH = os.getenv("MODEL_PATH", "backend/weights/best.pt")
+DEVICE = os.getenv("DEVICE", "cpu")
+CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", 0.5))
+
+print("MODEL_PATH:", MODEL_PATH)
+print("DEVICE:", DEVICE)
+print("CONFIDENCE_THRESHOLD:", CONFIDENCE_THRESHOLD)
+
+
 # Alleen requests vanaf http://localhost:3000 toestaan
-CORS(app, resources={r"/*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}})#"http://localhost:3000" voegen
+CORS(app, resources={r"/*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}})  #HIER LATER DE FRONTEND URL INVOEREN---------------
+
+
+
+#"http://localhost:3000"
+
  
 # Gebruik GPU/Metal als beschikbaar
-device = "mps" if torch.backends.mps.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else DEVICE
 
 
 # YOLO-model laden
-model = YOLO("/Users/anna-elisetweeboom/datasets/final_combined2/training_runs/apple_banana_notapple_final_safe/weights/best.pt")
+model = YOLO(MODEL_PATH)
 model.to(device)
 print("Device in gebruik:", device)
 
@@ -28,7 +44,7 @@ def detect():
         img_base64 = data.get("image")
         if not img_base64:
             return jsonify({"error": "Geen 'image' veld"}), 400
-        
+    
         # ---- Alleen voor testen (tijdelijk) ----
         # print("Ontvangen afbeelding:", len(img_base64))
         # return jsonify({"detections": []})
@@ -90,6 +106,7 @@ def detect():
         return jsonify({"error": "Flask server error", "details": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001)
+    port = int(os.getenv("PORT", 5000)) # 5000 is alleen fallback voor lokaal testen 
+    app.run(host="0.0.0.0", port=port)
 
 
