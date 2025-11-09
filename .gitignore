@@ -1,7 +1,0 @@
-node_modules
-.env
-backupAI.py
-backupLast.html
-frontBackup.js
-.DS_Store
-public/
