@@ -11,7 +11,7 @@ import os
 
 app = Flask(__name__)
 
-MODEL_PATH = os.getenv("MODEL_PATH", "MODEL_PATH", "weights/best.pt")
+MODEL_PATH = os.getenv("MODEL_PATH", "weights/best.pt")
 DEVICE = os.getenv("DEVICE", "cpu")
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", 0.5))
 
@@ -110,7 +110,7 @@ def detect():
         return jsonify({"error": "Flask server error", "details": str(e)}), 500
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000)) # 5000 is alleen fallback voor lokaal testen 
+    port = int(os.getenv("PORT", 5001)) # 5000 is alleen fallback voor lokaal testen 
     app.run(host="0.0.0.0", port=port)
 
 
