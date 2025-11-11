@@ -11,7 +11,7 @@ import os
 
 app = Flask(__name__)
 
-MODEL_PATH = os.getenv("MODEL_PATH", "weights/best.pt")
+MODEL_PATH = os.getenv("MODEL_PATH", "MODEL_PATH", "weights/best.pt")
 DEVICE = os.getenv("DEVICE", "cpu")
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", 0.5))
 
