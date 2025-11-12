@@ -58,6 +58,11 @@ app.post('/detect', async (req, res) => {
   //res.sendFile(path.join(__dirname, 'public', 'index.html'));
 //});
 
+app.get('/', (req, res) => {
+  res.send('Hello world!');
+});
+
+
 
 
 app.listen(port, '0.0.0.0', () => console.log(`✅ Node.js server listening on ${port}🚀`));
