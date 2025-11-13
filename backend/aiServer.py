@@ -19,7 +19,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.getenv("MODEL_PATH", os.path.join(BASE_DIR, "weights/best.pt"))
 DEVICE = os.getenv("DEVICE", "cpu")
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", 0.5))
-
+print("💡 Volledig MODEL_PATH:", MODEL_PATH)
 
 device = "cuda" if torch.cuda.is_available() else DEVICE
 
