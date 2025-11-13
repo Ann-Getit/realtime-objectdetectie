@@ -21,15 +21,11 @@ CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", 0.5))
 
 
 device = "cuda" if torch.cuda.is_available() else DEVICE
-model = None 
 
 
-@app.before_first_request
-def load_model():
-    global model
-    model = YOLO(MODEL_PATH)
-    model.to(DEVICE)
-    print("✅ Model geladen")
+model = YOLO(MODEL_PATH)
+model.to(device)
+print("✅ Model geladen:", device)
 
 
 
@@ -49,14 +45,12 @@ print("CONFIDENCE_THRESHOLD:", CONFIDENCE_THRESHOLD)
 #"http://localhost:3000"
 
  
-# Gebruik GPU/Metal als beschikbaar
-device = "cuda" if torch.cuda.is_available() else DEVICE
 
 
 # YOLO-model laden
-model = YOLO(MODEL_PATH)
-model.to(device)
-print("Device in gebruik:", device)
+#model = YOLO(MODEL_PATH)
+#model.to(device)
+#print("Device in gebruik:", device)
 
 @app.route("/detect", methods=["POST"])
 def detect():
@@ -127,7 +121,7 @@ def detect():
         return jsonify({"error": "Flask server error", "details": str(e)}), 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000)) # 5000 is alleen fallback voor lokaal testen 
+    port = int(os.environ.get("PORT", 5050)) # 5000 is alleen fallback voor lokaal testen 
     app.run(host="0.0.0.0", port=port)
 
 
