@@ -11,7 +11,7 @@ import os
 
 app = Flask(__name__)
 
-MODEL_PATH = os.getenv("MODEL_PATH", "weights/best.pt")
+MODEL_PATH = os.getenv("MODEL_PATH", "backend/weights/best.pt")
 DEVICE = os.getenv("DEVICE", "cpu")
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", 0.5))
 
@@ -26,7 +26,6 @@ CORS(app, resources={r"/*": {"origins": [
     "http://127.0.0.1:3000",
     "https://ann-getit.github.io/realtime-objectdetectie/"
     ]}})  #HIER LATER DE FRONTEND URL INVOEREN---------------
-
 
 
 #"http://localhost:3000"
@@ -110,7 +109,7 @@ def detect():
         return jsonify({"error": "Flask server error", "details": str(e)}), 500
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000)) # 5000 is alleen fallback voor lokaal testen 
+    port = int(os.environ.get("PORT", 5000)) # 5000 is alleen fallback voor lokaal testen 
     app.run(host="0.0.0.0", port=port)
 
 
