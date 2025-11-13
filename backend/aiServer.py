@@ -1,4 +1,8 @@
 # ai_server.py
+import os
+os.environ["YOLO_CONFIG_DIR"] = "/tmp/Ultralytics"
+os.makedirs("/tmp/Ultralytics", exist_ok=True)
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from PIL import Image
@@ -6,9 +10,6 @@ import io
 import base64
 import numpy as np
 import torch
-import os
-os.environ["YOLO_CONFIG_DIR"] = "/tmp/Ultralytics"
-os.makedirs("/tmp/Ultralytics", exist_ok=True)
 from ultralytics import YOLO
 
 
@@ -18,9 +19,19 @@ MODEL_PATH = os.getenv("MODEL_PATH", "weights/best.pt")
 DEVICE = os.getenv("DEVICE", "cpu")
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", 0.5))
 
-print("MODEL_PATH:", MODEL_PATH)
-print("DEVICE:", DEVICE)
-print("CONFIDENCE_THRESHOLD:", CONFIDENCE_THRESHOLD)
+
+device = "cuda" if torch.cuda.is_available() else DEVICE
+model = None 
+
+
+@app.before_first_request
+def load_model():
+    global model
+    model = YOLO(MODEL_PATH)
+    model.to(DEVICE)
+    print("✅ Model geladen")
+
+
 
 
 # Alleen requests vanaf http://localhost:3000 toestaan
@@ -30,6 +41,10 @@ CORS(app, resources={r"/*": {"origins": [
     "https://ann-getit.github.io/realtime-objectdetectie/"
     ]}})  #HIER LATER DE FRONTEND URL INVOEREN---------------
 
+
+print("MODEL_PATH:", MODEL_PATH)
+print("DEVICE:", DEVICE)
+print("CONFIDENCE_THRESHOLD:", CONFIDENCE_THRESHOLD)
 
 #"http://localhost:3000"
 
