@@ -1,13 +1,16 @@
 # ai_server.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from ultralytics import YOLO
 from PIL import Image
 import io
 import base64
 import numpy as np
 import torch
 import os
+os.environ["YOLO_CONFIG_DIR"] = "/tmp/Ultralytics"
+os.makedirs("/tmp/Ultralytics", exist_ok=True)
+from ultralytics import YOLO
+
 
 app = Flask(__name__)
 
