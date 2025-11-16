@@ -16,7 +16,12 @@ from ultralytics import YOLO
 app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.getenv("MODEL_PATH", os.path.join(BASE_DIR, "weights/best.pt"))
+MODEL_PATH = os.getenv("MODEL_PATH", os.path.join(BASE_DIR, "backend/weights/best.pt"))
+print("💡 Volledig MODEL_PATH:", MODEL_PATH)
+# Controleer eerst of het model echt bestaat
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError(f"Het model kon niet gevonden worden: {MODEL_PATH}")
+
 DEVICE = os.getenv("DEVICE", "cpu")
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", 0.5))
 print("💡 Volledig MODEL_PATH:", MODEL_PATH)
@@ -33,6 +38,8 @@ print("✅ Model geladen:", device)
 
 # Alleen requests vanaf http://localhost:3000 toestaan
 CORS(app, resources={r"/*": {"origins": [
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
     "http://localhost:3000", 
     "http://127.0.0.1:3000",
     "https://ann-getit.github.io/realtime-objectdetectie/"
