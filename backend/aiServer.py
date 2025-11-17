@@ -24,8 +24,11 @@ if not os.path.exists(MODEL_PATH):
 
 DEVICE = os.getenv("DEVICE", "cpu")
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", 0.5))
+print("📂 __file__:", __file__)
+print("📂 BASE_DIR:", BASE_DIR)
 print("💡 Volledig MODEL_PATH:", MODEL_PATH)
-
+print("💡 Current working directory:", os.getcwd())
+print("💡 Files in cwd:", os.listdir(os.getcwd()))
 device = "cuda" if torch.cuda.is_available() else DEVICE
 
 
@@ -40,6 +43,7 @@ print("✅ Model geladen:", device)
 CORS(app, resources={r"/*": {"origins": [
     "http://127.0.0.1:5500",
     "http://localhost:5500",
+    "http://localhost:5050", 
     "http://localhost:3000", 
     "http://127.0.0.1:3000",
     "https://ann-getit.github.io/realtime-objectdetectie/"
@@ -71,7 +75,7 @@ def detect():
         # ---- Alleen voor testen (tijdelijk) ----
         # print("Ontvangen afbeelding:", len(img_base64))
         # return jsonify({"detections": []})
-        
+
 
     # Base64 → PIL → numpy
         img_bytes = base64.b64decode(img_base64)
@@ -91,7 +95,7 @@ def detect():
             # In ai_server.py
             results = model(frame, device=device, imgsz=384)  # laat model zelf resize doen
 
-   
+
         # Resultaten parsen
             detections = []
             detected_classes = []
@@ -111,7 +115,7 @@ def detect():
                      })
 
             app.logger.info(f"Frame shape: {frame.shape},  Detecties: {len(detections)}, Classes: {detected_classes}")
-        
+
         print("YOLO intern shape:", results[0].path, results[0].orig_shape, results[0].boxes.shape)
         print(model.names)
 
@@ -121,15 +125,19 @@ def detect():
         if device == "mps":
             torch.mps.empty_cache()
 
-    
+
         return jsonify({"detections": detections})
-    
+
     except Exception as e:
         # Zorg dat de server niet crasht bij fouten
         return jsonify({"error": "Flask server error", "details": str(e)}), 500
 
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050)) # 5000 is alleen fallback voor lokaal testen 
     app.run(host="0.0.0.0", port=port)
+    
+
+
 
 
