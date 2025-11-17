@@ -28,15 +28,12 @@ print("📂 __file__:", __file__)
 print("📂 BASE_DIR:", BASE_DIR)
 print("💡 Volledig MODEL_PATH:", MODEL_PATH)
 print("💡 Current working directory:", os.getcwd())
-print("💡 Files in cwd:", os.listdir(os.getcwd()))
+print("💡 Files in cwd:", os.listdir(BASE_DIR))
+
 device = "cuda" if torch.cuda.is_available() else DEVICE
 
 
-model = YOLO(MODEL_PATH)
-model.to(device)
-print("✅ Model geladen:", device)
-
-
+model = None 
 
 
 # Alleen requests vanaf http://localhost:3000 toestaan
@@ -56,7 +53,6 @@ print("CONFIDENCE_THRESHOLD:", CONFIDENCE_THRESHOLD)
 
 #"http://localhost:3000"
 
- 
 
 
 # YOLO-model laden
@@ -66,57 +62,61 @@ print("CONFIDENCE_THRESHOLD:", CONFIDENCE_THRESHOLD)
 
 @app.route("/detect", methods=["POST"])
 def detect():
+    global model
+
+    # 🔥 Load model during first request (LAZY LOAD)
+    if model is None:
+        print("⏳ YOLO-model aan het laden...")
+
+        if not os.path.exists(MODEL_PATH):
+            return jsonify({"error": f"Model niet gevonden: {MODEL_PATH}"}), 500
+
+        model = YOLO(MODEL_PATH)
+        model.to(device)
+        print("✅ Model geladen:", device)
+
     try:
         data = request.get_json()
         img_base64 = data.get("image")
         if not img_base64:
             return jsonify({"error": "Geen 'image' veld"}), 400
     
-        # ---- Alleen voor testen (tijdelijk) ----
-        # print("Ontvangen afbeelding:", len(img_base64))
-        # return jsonify({"detections": []})
-
 
     # Base64 → PIL → numpy
         img_bytes = base64.b64decode(img_base64)
-
-        try:
-             img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-        except Exception:
-            return jsonify({"error": "Kon afbeelding niet openen"}), 400
-
-
+        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         frame = np.array(img)
 
-        print("Frame shape:", frame.shape)
 
-  # YOLO detectie
+         # YOLO detectie
         with torch.no_grad():  # geen gradients voor inferentie
             # In ai_server.py
             results = model(frame, device=device, imgsz=384)  # laat model zelf resize doen
 
+      
 
         # Resultaten parsen
-            detections = []
-            detected_classes = []
+        detections = []
+        detected_classes = []
 
-            for r in results:
-                for box in r.boxes:
-                    class_name = model.names[int(box.cls)]
-                    if class_name == "not_apple":  # filter
-                       continue
+        for r in results:
+            for box in r.boxes:
+                class_name = model.names[int(box.cls)]
+                if class_name == "not_apple":  # filter
+                    continue
 
-        # Voeg alleen de gefilterde classes toe
-                    detected_classes.append(class_name)
-                    detections.append({
-                        "class": class_name,
-                        "confidence": float(box.conf),
-                        "bbox": box.xyxy[0].tolist()
-                     })
+                detected_classes.append(class_name)
 
-            app.logger.info(f"Frame shape: {frame.shape},  Detecties: {len(detections)}, Classes: {detected_classes}")
+                detections.append({
+                    "class": class_name,
+                    "confidence": float(box.conf),
+                    "bbox": box.xyxy[0].tolist()
+                })
 
-        print("YOLO intern shape:", results[0].path, results[0].orig_shape, results[0].boxes.shape)
+        app.logger.info(
+            f"Frame shape: {frame.shape},  Detecties: {len(detections)}, Classes: {detected_classes}"
+        )
+
         print(model.names)
 
 
@@ -135,7 +135,8 @@ def detect():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050)) # 5000 is alleen fallback voor lokaal testen 
-    app.run(host="0.0.0.0", port=port)
+    print(f"💡 Luistert op poort: {port}")
+    
     
 
 
