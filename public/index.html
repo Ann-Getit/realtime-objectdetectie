@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+
+      #videoContainer {
+      position: relative;
+      
+    }
+    
+    #switchCamera {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 3;
+      background: rgb(181, 135, 224);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: block;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    #video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 640;
+      height: 480;
+      display: block;
+      z-index: 1;
+      object-fit: cover;
+    }
+
+    </style>
+</head>
+<body>
+  <!--<div id="log" style="white-space: pre-wrap; background: #f0f0f0; padding: 10px; height: 200px; overflow-y: scroll; border: 1px solid #ccc;"></div> -->
+  <div id="videoContainer" style="position: relative; display: inline-block;">
+  <video id="video" autoplay muted playsinline></video>
+  <canvas id="canvas" width="640" height="480"></canvas>
+  <button id="switchCamera">Switch Camera</button>
+</div>
+<script>
+
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let processing = false;
+
+
+    let currentFacingMode = 'user'; // start met frontcamera
+    let currentStream = null;
+
+
+    // Open webcam
+    function startCamera(facingMode) {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+
+
+      navigator.mediaDevices.getUserMedia({ video: { facingMode } })
+        .then(stream => {
+         currentStream = stream;
+         video.srcObject = stream;
+        
+
+        // Wacht tot metadata geladen is (video grootte bekend)
+        video.onloadedmetadata = () => {
+            video.play(); // zeker weten dat video speelt
+            // Start pas frame verwerking als video klaar is
+            setInterval(processFrame, 100); // 10 fps
+        };
+    })
+    .then(() => console.log("✅ Camera toegang toegestaan"))
+    .catch(err => console.error("Camera error:", err));
+}
+
+// start met de frontcamera
+    startCamera(currentFacingMode);
+
+
+
+
+
+    function switchCam() {
+      document.getElementById('switchCamera').addEventListener('click', () => {
+        currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+        startCamera(currentFacingMode);
+        console.log('🔄 Switch Camera pressed!');
+      }
+    )};
+    
+    switchCam();
+
+
+async function processFrame() {
+    if (processing) return; // skip frame als vorige nog bezig
+    processing = true;
+
+
+        // Alleen verder als video ready
+    if (video.readyState < 2) { 
+        processing = false;
+        return;
+    }
+
+      // Canvas dezelfde grootte als video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  
+
+  // Frame als base64
+      const dataURL = canvas.toDataURL('image/jpeg');
+      const base64 = dataURL.split(',')[1];
+
+      if (!base64) { // check nogmaals
+        console.warn("Geen frame beschikbaar, skip");
+        processing = false;
+        return;
+    }
+
+      
+      // 🔧 Dynamische URL: gebruikt automatisch ngrok of lokale server
+    const SERVER_URL = window.location.hostname.includes("ngrok")
+      ? `${window.location.origin}/detect`
+       : "https://backend-realtime-ai.onrender.com/detect"; // jouw lokale IP als fallback //URL PLAATSEN van backend
+       //  Als je lokaal test zonder ngrok, moet je het lokale IP of localhost gebruiken=    : "http://localhost:5050/detect";
+
+
+    try { 
+        const res = await fetch(SERVER_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: base64 })
+        });
+
+
+    if (!res.ok) {
+        const text = await res.text(); // lees de error
+        console.error("Server returned error:", text);
+        return;
+     }
+
+     const json = await res.json();
+      if (json.detections) drawDetections(json.detections);
+
+
+      } catch (err) {
+          console.error("Fetch error:", err);
+      } finally {
+          processing = false;
+      }
+  }
+
+    function drawDetections(detections) {
+      // Clear canvas overlay
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 2;
+        ctx.font = '16px Arial';
+        ctx.fillStyle = 'purple';
+
+        detections.forEach(det => {
+            const [x1, y1, x2, y2] = det.bbox;
+            const w = x2 - x1;
+            const h = y2 - y1;
+            ctx.strokeRect(x1, y1, w, h);
+            ctx.fillText(`${det.class} ${Math.round(det.confidence * 100)}%`, x1, y1 - 5);
+       });
+    }
+    
+
+
+</script>
+
+    
+</body>
+</html>
