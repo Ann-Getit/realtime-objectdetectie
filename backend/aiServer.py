@@ -16,7 +16,8 @@ from ultralytics import YOLO
 app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.getenv("MODEL_PATH", os.path.join(BASE_DIR, "weights", "best.pt"))
+MODEL_PATH = os.path.join(BASE_DIR, "weights", "best.pt")
+
 print("💡 Volledig MODEL_PATH:", MODEL_PATH)
 # Controleer eerst of het model echt bestaat
 if not os.path.exists(MODEL_PATH):
@@ -136,7 +137,7 @@ def detect():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050)) # 5000 is alleen fallback voor lokaal testen 
     print(f"💡 Luistert op poort: {port}")
-    
+
     
 
 
