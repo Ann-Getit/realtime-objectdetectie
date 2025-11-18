@@ -61,6 +61,12 @@ print("CONFIDENCE_THRESHOLD:", CONFIDENCE_THRESHOLD)
 #model.to(device)
 #print("Device in gebruik:", device)
 
+
+@app.route("/", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"}), 200
+
+
 @app.route("/detect", methods=["POST"])
 def detect():
     global model
