@@ -78,13 +78,13 @@ let processing = false;
         .then(stream => {
          currentStream = stream;
          video.srcObject = stream;
-        
+        video.onplaying = () => console.log("✅ Video is playing");
 
         // Wacht tot metadata geladen is (video grootte bekend)
         video.onloadedmetadata = () => {
-            video.play(); // zeker weten dat video speelt
+          video.play(); // zeker weten dat video speelt
             // Start pas frame verwerking als video klaar is
-            setInterval(processFrame, 100); // 10 fps
+          processFrame(); // start recursieve loop
         };
     })
     .then(() => console.log("✅ Camera toegang toegestaan"))
@@ -93,9 +93,6 @@ let processing = false;
 
 // start met de frontcamera
     startCamera(currentFacingMode);
-
-
-
 
 
     function switchCam() {
@@ -108,15 +105,29 @@ let processing = false;
     
     switchCam();
 
+let lastProcessTime = 0; 
+const FPS = 3;
+
 
 async function processFrame() {
-    if (processing) return; // skip frame als vorige nog bezig
-    processing = true;
+  const now = performance.now();
+    if (now - lastProcessTime < 1000 / FPS) { // niet meer dan 3 fps 
+    requestAnimationFrame(processFrame);
+    return; // skip frame als vorige nog bezig
+    }
+    lastProcessTime = now;
+
+    if (processing) { // skip frame als vorige nog bezig 
+       requestAnimationFrame(processFrame); 
+       return 
+      } 
+      processing = true;
 
 
         // Alleen verder als video ready
     if (video.readyState < 2) { 
         processing = false;
+        requestAnimationFrame(processFrame);
         return;
     }
 
@@ -124,27 +135,29 @@ async function processFrame() {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  
+    // Debug: check dat frame getekend is 
+       console.log("Frame getekend, width:", canvas.width, "height:", canvas.height);
 
   // Frame als base64
+  try {
       const dataURL = canvas.toDataURL('image/jpeg');
       const base64 = dataURL.split(',')[1];
-
       if (!base64) { // check nogmaals
         console.warn("Geen frame beschikbaar, skip");
         processing = false;
+        requestAnimationFrame(processFrame);
         return;
     }
 
       
       // 🔧 Dynamische URL: gebruikt automatisch ngrok of lokale server
-    const SERVER_URL = window.location.hostname.includes("ngrok")
-      ? `${window.location.origin}/detect`
-       : "https://backend-realtime-server.onrender.com/detect"; // jouw lokale IP als fallback //URL PLAATSEN van backend
+     let SERVER_URL = window.location.hostname.includes("ngrok")
+        ? `${window.location.origin}/detect`
+        : (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost")
+        ? `http://${window.location.hostname}:5050/detect`
+        : "https://backend-realtime-server.onrender.com/detect"; // jouw lokale IP als fallback //URL PLAATSEN van backend
        //  Als je lokaal test zonder ngrok, moet je het lokale IP of localhost gebruiken=    : "http://localhost:5050/detect";
 
-
-    try { 
 
         console.log("sending fram to backend, length:", base64.length);
 
@@ -158,7 +171,8 @@ async function processFrame() {
 
     if (!res.ok) {
         const text = await res.text(); // lees de error
-        console.error("Server returned error:", text);
+        console.warn("Server nog bezig, skip frame:", text); 
+        await new Promise(resolve => setTimeout(resolve, 500)); // 0.5 sec/500ms wachten
         return;
      }
 
@@ -170,6 +184,7 @@ async function processFrame() {
           console.error("Fetch error:", err);
       } finally {
           processing = false;
+          requestAnimationFrame(processFrame);//---------------------PROCESSFRAME
       }
   }
 
@@ -191,7 +206,18 @@ async function processFrame() {
             ctx.fillText(`${det.class} ${Math.round(det.confidence * 100)}%`, x1, y1 - 5);
        });
     }
+    /*
+    DrawDetections
+
+Je drawDetections clear de canvas en tekent video + bounding boxes. Alles klopt.
+Tip: als je bounding boxes te groot zijn voor canvas (door resolutie mismatch), moet je de schaal aanpassen:
     
+const scaleX = canvas.width / video.videoWidth;
+const scaleY = canvas.height / video.videoHeight;
+
+ctx.strokeRect(x1*scaleX, y1*scaleY, w*scaleX, h*scaleY);
+ctx.fillText(`${det.class} ${Math.round(det.confidence * 100)}%`, x1*scaleX, y1*scaleY - 5);
+*/
 
 
 </script>
