@@ -52,7 +52,10 @@
   <video id="video" autoplay muted playsinline></video>
   <canvas id="canvas" width="640" height="480"></canvas>
   <button id="switchCamera">Switch Camera</button>
+  
 </div>
+<div id="server-status"></div>
+
 <script>
 
 
@@ -107,7 +110,7 @@ let processing = false;
 
 let lastProcessTime = 0; 
 const FPS = 3;
-
+let serverOffline = false; //LETOP als detectie enzv niet werkt ondanks false.. vergeet niet startProcessing aan te roepen. 
 
 async function processFrame() {
   const now = performance.now();
@@ -120,7 +123,7 @@ async function processFrame() {
     if (processing) { // skip frame als vorige nog bezig 
        requestAnimationFrame(processFrame); 
        return 
-      } 
+    } 
       processing = true;
 
 
@@ -149,6 +152,13 @@ async function processFrame() {
         return;
     }
 
+    if (serverOffline) {
+       updateServerStatus();
+       processing = false;
+       requestAnimationFrame(processFrame);
+       return;
+    }
+
       
       // 🔧 Dynamische URL: gebruikt automatisch ngrok of lokale server
      let SERVER_URL = window.location.hostname.includes("ngrok")
@@ -159,34 +169,71 @@ async function processFrame() {
        //  Als je lokaal test zonder ngrok, moet je het lokale IP of localhost gebruiken=    : "http://localhost:5050/detect";
 
 
-        console.log("sending fram to backend, length:", base64.length);
+      console.log("sending fram to backend, length:", base64.length);
+        
 
-        const res = await fetch(SERVER_URL, {
+     
+      const res = await fetch(SERVER_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image: base64 })
-        
-        });
+      });
 
 
-    if (!res.ok) {
-        const text = await res.text(); // lees de error
-        console.warn("Server nog bezig, skip frame:", text); 
-        await new Promise(resolve => setTimeout(resolve, 500)); // 0.5 sec/500ms wachten
-        return;
-     }
-
-     const json = await res.json();
-      if (json.detections) drawDetections(json.detections);
-
-
-      } catch (err) {
-          console.error("Fetch error:", err);
-      } finally {
-          processing = false;
-          requestAnimationFrame(processFrame);//---------------------PROCESSFRAME
+     if (!res.ok) {
+         if (res.status === 503 || res.status === 429) {
+            serverOffline = true; 
+            console.error("Server offline, verdere requests geblokkeerd!");
+            console.log("status:", serverOffline);
+            updateServerStatus(); //update meteen de UI
+         } else {
+            const text = await res.text(); // lees de error
+            console.warn("Server is offline, stoppen met requests", text);
+            await new Promise(resolve => setTimeout(resolve, 500)); // wacht even bij andere errors
+         }
+         return; // stop hier meteen
       }
+      
+      const json = await res.json();
+
+      // Check of backend zegt dat je limiet bereikt is
+     if (json.error === "limit-reached") {
+      serverOffline = true;
+      updateServerStatus();
+      console.error("⚠️ Requestlimiet bereikt – alle requests gestopt!");
+      return; 
   }
+      if (json.detections) drawDetections(json.detections);
+      
+} catch (err) {
+    console.error("Fetch error:", err);
+
+} finally {
+    processing = false;
+    if (!serverOffline) {
+    requestAnimationFrame(processFrame);
+    } else {
+        console.log("🔴 Loop gestopt – server offline / limiet bereikt."); // alleen melding
+    }
+  }
+}
+
+function updateServerStatus() {
+const statusDiv = document.getElementById("server-status");
+if (!statusDiv) return; // voorkomt fouten als element niet bestaat
+statusDiv.textContent = serverOffline
+   ? "Server status: offline - requests geblokkeerd"
+   : "Server status: online";
+}
+
+function startProcessing() {
+    processing = false;
+    serverOffline = false;
+    requestAnimationFrame(processFrame);
+}
+//HIER MOET : startProcessing();  ALS REQUEST OPNIEUW STARTEN NA DIE 1000 REQ STOP.
+
+
 
     function drawDetections(detections) {
       // Clear canvas overlay
@@ -206,6 +253,8 @@ async function processFrame() {
             ctx.fillText(`${det.class} ${Math.round(det.confidence * 100)}%`, x1, y1 - 5);
        });
     }
+
+
     /*
     DrawDetections
 
